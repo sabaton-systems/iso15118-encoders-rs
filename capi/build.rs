@@ -6,17 +6,32 @@
  * License: $RP_BEGIN_LICENSE$ SPDX:MIT https://opensource.org/licenses/MIT $RP_END_LICENSE$
  *
 */
-use std::env;
+use std::{env, path::PathBuf};
+use cmake::Config;
 
 fn main() {
     // check pkgconfig dependencies
     // system_deps::Config::new().probe().unwrap();
 
     // invalidate the built crate whenever the wrapper changes
-    println!("cargo:rustc-link-search=/usr/local/lib64");
-    println!("cargo:rustc-link-arg=-liso15118");
-    // println!("cargo:rustc-link-arg=-lgnutls");
+    // println!("cargo:rustc-link-search=/usr/local/lib64");
+    // println!("cargo:rustc-link-arg=-liso15118");
 
+    let c_api_path = "../iso15118-encoders";
+
+    let mut cfg = Config::new(c_api_path.to_owned());
+    let dst= cfg.build().join("build");
+
+    println!("cargo:info=iso15118 codec build completed and output at {}", dst.display());
+
+    println!("cargo:rustc-link-search=native={}", dst.display());
+    println!("cargo:rustc-link-lib=static=iso15118");
+
+    // get the outfolder
+    let out_dir = env::var("OUT_DIR").expect("Failed to get OUT_DIR");
+    let out_dir_path = PathBuf::from(out_dir);
+    let iso15118_encoder_include_dir = out_dir_path.join("include");
+    
     if let Ok(value) = env::var("CARGO_TARGET_DIR") {
         if let Ok(profile) = env::var("PROFILE") {
             println!("cargo:rustc-link-search=crate={}{}", value, profile);
@@ -35,6 +50,7 @@ fn main() {
     println!("cargo:rerun-if-changed=capi/capi-exi.h");
     let libcapi = bindgen::Builder::default()
         .header("capi/capi-exi.h") // Chargebyte C prototype wrapper input
+        .clang_arg(format!("-I{}", iso15118_encoder_include_dir.display()))
         .raw_line(header)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .derive_debug(false)
@@ -65,6 +81,7 @@ fn main() {
     ";
     println!("cargo:rerun-if-changed=capi/v2g-messages/capi-v2g.h");
     let libcapi = bindgen::Builder::default()
+        .clang_arg(format!("-I{}", iso15118_encoder_include_dir.display()))
         .header("capi/v2g-messages/capi-v2g.h") // Chargebyte C prototype wrapper input
         .raw_line(header)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
@@ -101,6 +118,7 @@ fn main() {
     ";
     println!("cargo:rerun-if-changed=capi/iso2-messages/capi-iso2.h");
     let libcapi = bindgen::Builder::default()
+        .clang_arg(format!("-I{}", iso15118_encoder_include_dir.display()))
         .header("capi/iso2-messages/capi-iso2.h") // Chargebyte C prototype wrapper input
         .raw_line(header)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
@@ -130,6 +148,7 @@ fn main() {
     ";
     println!("cargo:rerun-if-changed=capi/din-messages/capi-din.h");
     let libcapi = bindgen::Builder::default()
+        .clang_arg(format!("-I{}", iso15118_encoder_include_dir.display()))
         .header("capi/din-messages/capi-din.h") // Chargebyte C prototype wrapper input
         .raw_line(header)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
